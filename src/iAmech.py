@@ -87,8 +87,9 @@ def keep_forward_thread():
 		rate.sleep()
 
 def SIGINT_handler(signum, frame):
+	print("Kill threads")
 	for thread in threads:
-		thread.kill()
+		thread.terminate()
 
 class iAmechROS():
 	def __init__(self):
@@ -191,6 +192,8 @@ if __name__ == '__main__':
 	threads.append(threading.Thread(target=keep_publish_tf_thread))
 	threads.append(threading.Thread(target=keep_publish_odom_thread))
 	threads.append(threading.Thread(target=keep_forward_thread))
+
+	signal.signal(signal.SIGINT, SIGINT_handler)
 
 	for thread in threads:
 		thread.start()
