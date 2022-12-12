@@ -1,0 +1,7 @@
+<launch>
+<node name="iAmech_driver" pkg="iamech_ros" type="driver.py" output="screen" args="">
+    <param name="radius" value="88"/>
+    <param name="isTest" value="True"/>
+</node>
+
+</launch>
