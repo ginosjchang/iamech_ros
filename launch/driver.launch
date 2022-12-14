@@ -1,12 +1,10 @@
 <launch>
-<arg name="radius" default="85"/>
 <arg name="isTest" default="False"/>
-<arg name="fps" default="10.0"/>
+<arg name="yaml_path" default="$(find iamech_ros)/config/AGV_config.yaml"/>
 
 <node name="iAmech_driver" pkg="iamech_ros" type="driver.py" output="screen" args="">
-    <param name="radius" value="$(arg radius)"/>
     <param name="isTest" value="$(arg isTest)"/>
-    <param name="fps" value="$(arg fps)"/>
+    <param name="yaml_path" value="$(arg yaml_path)"/>
 </node>
 
 </launch>
