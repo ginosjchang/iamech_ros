@@ -147,6 +147,7 @@ def connectToPLC():
 	plc = pyads.Connection(PLC_AMS_ID, 801, PLC_IP)
 	plc.open()
 	print("Connection built!")
+	plc.write_by_name(".bSLAM_ServeON", 1, pyads.PLCTYPE_BOOL)
 
 def set_param():
 	print("AGV Parameters: ")
@@ -188,7 +189,26 @@ def set_param():
 	print("\tROUTE_NAME: ", rospy.get_param("~plc_route_name"))
 
 	if not rospy.has_param("~plc_hostname"): rospy.set_param("~plc_hostname", "192.168.100.191")
-	print("\tHOSTNAME: ", rospy.get_param("~plc_hostname"))	
+	print("\tHOSTNAME: ", rospy.get_param("~plc_hostname"))
+
+	if not rospy.has_param("~isTest"): rospy.set_param("~isTest", True)
+	print("\tisTest: ", rospy.get_param("~isTest"))
+
+def print_agv_status():
+	global plc, mutex
+	rate = rospy.Rate(1.0)
+	while not rospy.is_shutdown():
+		mutex.acquire()
+		print("Left wheel:")
+		print("\tPos: ", plc.read_by_name(".SLAM_L[14]", pyads.PLCTYPE_DINT))
+		print("\tVelocity", plc.read_by_name(".SLAM_L[15]", pyads.PLCTYPE_DINT))
+		print("\tvoltage: ", plc.read_by_name(".SLAM_L[18]", pyads.PLCTYPE_DINT))
+		print("Right wheel:")
+		print("\tPos: ", plc.read_by_name(".SLAM_R[14]", pyads.PLCTYPE_DINT))
+		print("\tVelocity", plc.read_by_name(".SLAM_R[15]", pyads.PLCTYPE_DINT))
+		print("\tvoltage: ", plc.read_by_name(".SLAM_R[18]", pyads.PLCTYPE_DINT))
+		mutex.release()
+		rate.sleep()
 
 if __name__ == '__main__':
 
@@ -196,15 +216,14 @@ if __name__ == '__main__':
 
 	threads = []
 
+	set_param()
+	isTest = rospy.get_param("~isTest")
 	threads.append(threading.Thread(target=create_cmd_vel_subscrib))
 	threads.append(threading.Thread(target=create_tf_odom_publisher))
 
-	set_param()
-
-	if not rospy.has_param("~isTest"): rospy.set_param("~isTest", True)
-	isTest = rospy.get_param("~isTest")
-
-	if not isTest: connectToPLC()
+	if not isTest: 
+		connectToPLC()
+		# threads.append(threading.Thread(target=print_agv_status))
 
 	signal.signal(signal.SIGINT, SIGINT_handler)
 
@@ -214,4 +233,8 @@ if __name__ == '__main__':
 	for thread in threads:
 		thread.join()
 		print("Kill thread")
+	
+	if not isTest: 
+		plc.write_by_name(".bSLAM_ServeON", 0, pyads.PLCTYPE_BOOL)
+		plc.close()
 	print("end of node")

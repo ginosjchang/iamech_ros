@@ -1,7 +1,12 @@
 <launch>
+<arg name="radius" default="85"/>
+<arg name="isTest" default="False"/>
+<arg name="fps" default="10.0"/>
+
 <node name="iAmech_driver" pkg="iamech_ros" type="driver.py" output="screen" args="">
-    <param name="radius" value="88"/>
-    <param name="isTest" value="True"/>
+    <param name="radius" value="$(arg radius)"/>
+    <param name="isTest" value="$(arg isTest)"/>
+    <param name="fps" value="$(arg fps)"/>
 </node>
 
 </launch>
