@@ -14,6 +14,10 @@ import tf
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
+#User defined
+from iamech_ros.srv import AGV_Server, AGV_ServerResponse
+from iamech_ros.msg import PLCState
+
 mutex = threading.Lock()
 plc = None
 	
@@ -22,8 +26,8 @@ def cmd_vel_to_wheel_vel(vel_linear_m_s, vel_rotation_rad_s):
 	L_mm = rospy.get_param("~wheelbase")
 	R_mm = rospy.get_param("~radius")
 	vel_linear_mm_s = int(vel_linear_m_s * 1000)
-	vel_right_mm_s = 20 * (2 * vel_linear_mm_s + vel_rotation_rad_s * L_mm) / R_mm
-	vel_left_mm_s = 20 * (2 * vel_linear_mm_s - vel_rotation_rad_s * L_mm) / R_mm
+	vel_right_mm_s = (2 * vel_linear_mm_s + vel_rotation_rad_s * L_mm) / 2
+	vel_left_mm_s = (2 * vel_linear_mm_s - vel_rotation_rad_s * L_mm) / 2
 	return int(vel_right_mm_s), int(vel_left_mm_s)
 
 def AGV_drive(vel_left_mm_s, vel_right_mm_s):
@@ -40,7 +44,63 @@ def cmd_vel_callback(req):
 def create_cmd_vel_subscrib():
 	rospy.Subscriber("cmd_vel", Twist, cmd_vel_callback)
 	rospy.spin()
+
+def set_AGV_Server(req):
+	return AGV_ServerResponse(req.a)
+
+
+def create_service():
+	service = rospy.Service('ServerOnOff', AGV_Server, set_AGV_Server)
+	rospy.spin()
+
 # --------------
+def get_PLC_state():
+	global mutex
+	mutex.acquire()
+	state = PLCState()
+	state.right.bReady = plc.read_by_name(".SLAM_R[11]", pyads.PLCTYPE_DINT)
+	state.right.bMoving = plc.read_by_name(".SLAM_R[12]", pyads.PLCTYPE_DINT)
+	state.right.bError = plc.read_by_name(".SLAM_R[13]", pyads.PLCTYPE_DINT)
+	state.right.pos = plc.read_by_name(".SLAM_R[14]", pyads.PLCTYPE_DINT)
+	state.right.velocity = plc.read_by_name(".SLAM_R[15]", pyads.PLCTYPE_DINT)
+	state.right.ErrorCode = plc.read_by_name(".SLAM_R[16]", pyads.PLCTYPE_DINT)
+	state.right.temperature = plc.read_by_name(".SLAM_R[17]", pyads.PLCTYPE_DINT)
+	state.right.volt = plc.read_by_name(".SLAM_R[18]", pyads.PLCTYPE_DINT)
+
+	state.left.bReady = plc.read_by_name(".SLAM_L[11]", pyads.PLCTYPE_DINT)
+	state.left.bMoving = plc.read_by_name(".SLAM_L[12]", pyads.PLCTYPE_DINT)
+	state.left.bError = plc.read_by_name(".SLAM_L[13]", pyads.PLCTYPE_DINT)
+	state.left.pos = plc.read_by_name(".SLAM_L[14]", pyads.PLCTYPE_DINT)
+	state.left.velocity = plc.read_by_name(".SLAM_L[15]", pyads.PLCTYPE_DINT)
+	state.left.ErrorCode = plc.read_by_name(".SLAM_L[16]", pyads.PLCTYPE_DINT)
+	state.left.temperature = plc.read_by_name(".SLAM_L[17]", pyads.PLCTYPE_DINT)
+	state.left.volt = plc.read_by_name(".SLAM_L[18]", pyads.PLCTYPE_DINT)
+	mutex.release()
+	return state
+
+def print_PLC_state(state):
+	print("Right:")
+	print("\tbReady: ", state.right.bReady)
+	print("\tbMoving: ", state.right.bMoving)
+	print("\tbError: ", state.right.bError)
+	print("\tpos: ", state.right.pos)
+	print("\tvelocity: ", state.right.velocity)
+	print("\tErrorCode: ", state.right.ErrorCode)
+	print("\ttemperature: ", state.right.temperature)
+	print("\tvolt: ", state.right.volt)
+	print("Left")
+	print("\tbReady: ", state.left.bReady)
+	print("\tbMoving: ", state.left.bMoving)
+	print("\tbError: ", state.left.bError)
+	print("\tpos: ", state.left.pos)
+	print("\tvelocity: ", state.left.velocity)
+	print("\tErrorCode: ", state.left.ErrorCode)
+	print("\ttemperature: ", state.left.temperature)
+	print("\tvolt: ", state.left.volt)
+
+def create_PLC_state_subscrib():
+	rospy.Subscriber("plc_state", PLCState, print_PLC_state)
+	rospy.spin()
 
 def create_quat(degree):
 	return tf.transformations.quaternion_from_euler(0, 0, degree)
@@ -66,6 +126,7 @@ def create_tf_odom_publisher():
 
 	tf_broadcaster = tf.TransformBroadcaster()
 	odom_pub = rospy.Publisher("odom", Odometry, queue_size=50)
+	plc_pub = rospy.Publisher("plc_state", PLCState, queue_size=50)
 
 	pos_x = 0
 	pos_y = 0
@@ -77,37 +138,36 @@ def create_tf_odom_publisher():
 	while not rospy.is_shutdown():
 		now = rospy.Time.now()
 
-		mutex.acquire()
-		vel_right_m_s = plc.read_by_name(".SLAM_R[15]", pyads.PLCTYPE_DINT) / 1000
-		vel_left_m_s = plc.read_by_name(".SLAM_L[15]", pyads.PLCTYPE_DINT) / 1000
-		mutex.release()
-
+		current = get_PLC_state()
+		
 		delta_t = (now - last_time).to_sec()
 		last_time = now
 
-		x_dot = (vel_left_m_s + vel_right_m_s) * math.cos(pos_w) / 2
-		y_dot = (vel_left_m_s + vel_right_m_s) * math.sin(pos_w) / 2
-		w_dot = (1000 / L_mm) * (vel_right_m_s - vel_left_m_s)
+		vel_x = (current.left.velocity + current.right.velocity) * math.cos(pos_w) / 2000.0
+		vel_y = (current.left.velocity + current.right.velocity) * math.sin(pos_w) / 2000.0
+		vel_w = 1.0 / L_mm * (current.right.velocity - current.left.velocity)
 
-		pos_x += x_dot * delta_t
-		pos_y += y_dot * delta_t
-		pos_w += w_dot * delta_t
+		pos_x += vel_x * delta_t
+		pos_y += vel_y * delta_t
+		pos_w += vel_w * delta_t
 		pos_w = pos_w % (math.pi * 2)
 
 		quat = create_quat(pos_w)
 		tf_broadcaster.sendTransform((pos_x, pos_y, 0), quat, now, "base_link", "odom")
 
-		odom_msg = create_odom_msg(pos_x, pos_y, quat, x_dot, y_dot, w_dot, now)
-		
+		odom_msg = create_odom_msg(pos_x, pos_y, quat, vel_x, vel_y, vel_w, now)
+
+		plc_pub.publish(current)
 		odom_pub.publish(odom_msg)
 		rate.sleep()
 
 def SIGINT_handler(signum, frame):
-	print('\nkeyboard interrup')
+	rospy.loginfo("Keyboard Interrup")
 	rospy.core.signal_shutdown('keyboard interrupt')
 
 def connectToPLC():
 	global plc
+	rospy.loginfo("Initialize connection to backoff PLC")
 
 	PLC_AMS_ID = rospy.get_param("~plc_ams_id")
 	PLC_IP = rospy.get_param("~plc_ip")
@@ -126,49 +186,44 @@ def connectToPLC():
 	pyads.close_port()
 	pyads.add_route_to_plc(SENDER_AMS, HOSTNAME, PLC_IP, PLC_USERNAME, PLC_PASSWORD, route_name=ROUTE_NAME)
 
-	print("Initialize connection to PLC")
 	plc = pyads.Connection(PLC_AMS_ID, 801, PLC_IP)
 	plc.open()
-	print("Connection built!")
+	rospy.loginfo("Connection built!")
+
 	plc.write_by_name(".bSLAM_ServeON", 1, pyads.PLCTYPE_BOOL)
 
 def set_param():
-	if not rospy.has_param("~yaml_path"): raise("not yaml path")
+	if not rospy.has_param("~yaml_path"): 
+		rospy.logerr(".yaml path is needed to setup parameters")
+		raise("not yaml path")
 
 	with open(rospy.get_param("~yaml_path"), 'r') as file:
 		config = yaml.load(file)
 	
+	rospy.logdebug("Loading Parameter")
 	rospy.set_param("~radius", int(config['AGV']['radius']))
+	rospy.logdebug("radius: " + str(config['AGV']['radius']))
 	rospy.set_param("~wheelbase", int(config['AGV']['wheelbase']))
+	rospy.logdebug("wheelbase: " + str(config['AGV']['wheelbase']))
 	rospy.set_param("~fps", float(config['PLC']['fps']))
+	rospy.logdebug("fps: " + str(config['PLC']['fps']))
 	if not rospy.has_param("~pos_x"): rospy.set_param("~pos_x", 0.0)
 	if not rospy.has_param("~pos_y"): rospy.set_param("~pos_y", 0.0)
 	if not rospy.has_param("~pos_w"): rospy.set_param("~pos_w", 0.0)
 	rospy.set_param("~plc_ip", str(config['PLC']['ip']))
+	rospy.logdebug("plc_ip: " + str(config['PLC']['ip']))
 	rospy.set_param("~plc_ams_id", str(config['PLC']['ams_id']))
+	rospy.logdebug("plc_ams_id: " + str(config['PLC']['ams_id']))
 	rospy.set_param("~sender_ams", str(config['PLC']['sender_ams']))
+	rospy.logdebug("sender_ams: " + str(config['PLC']['sender_ams']))
 	rospy.set_param("~plc_username", str(config['PLC']['username']))
+	rospy.logdebug("plc_username: " + str(config['PLC']['username']))
 	rospy.set_param("~plc_password", str(config['PLC']['password']))
+	rospy.logdebug("plc_password: " + str(config['PLC']['password']))
 	rospy.set_param("~plc_route_name", str(config['PLC']['route_name']))
+	rospy.logdebug("plc_route_name: " + str(config['PLC']['route_name']))
 	rospy.set_param("~plc_hostname", str(config['PLC']['hostname']))
-
-def print_agv_status():
-	global plc, mutex
-	rate = rospy.Rate(1.0)
-	while not rospy.is_shutdown():
-		mutex.acquire()
-		if not plc:
-			print("Left wheel:")
-			print("\tPos: ", plc.read_by_name(".SLAM_L[14]", pyads.PLCTYPE_DINT))
-			print("\tVelocity", plc.read_by_name(".SLAM_L[15]", pyads.PLCTYPE_DINT))
-			print("\tvoltage: ", plc.read_by_name(".SLAM_L[18]", pyads.PLCTYPE_DINT))
-			print("Right wheel:")
-			print("\tPos: ", plc.read_by_name(".SLAM_R[14]", pyads.PLCTYPE_DINT))
-			print("\tVelocity", plc.read_by_name(".SLAM_R[15]", pyads.PLCTYPE_DINT))
-			print("\tvoltage: ", plc.read_by_name(".SLAM_R[18]", pyads.PLCTYPE_DINT))
-		mutex.release()
-		rate.sleep()
-
+	rospy.logdebug("plc_hostname: " + str(config['PLC']['hostname']))
 
 if __name__ == '__main__':
 
@@ -177,12 +232,12 @@ if __name__ == '__main__':
 	threads = []
 
 	set_param()
-	connectToPLC()
+	# connectToPLC()
 
 	isTest = rospy.get_param("~isTest")
 	threads.append(threading.Thread(target=create_cmd_vel_subscrib))
 	threads.append(threading.Thread(target=create_tf_odom_publisher))
-	threads.append(threading.Thread(target=print_agv_status))
+	threads.append(threading.Thread(target=create_PLC_state_subscrib))
 
 	signal.signal(signal.SIGINT, SIGINT_handler)
 
