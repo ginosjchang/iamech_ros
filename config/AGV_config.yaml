@@ -1,9 +1,9 @@
 AGV:
-  radius: 85
-  wheelbase: 630
+  radius: 80
+  wheelbase: 588
 PLC:
   ams_id: 192.168.100.100.1.1
-  fps: 10
+  fps: 30
   hostname: 192.168.100.191
   ip: 192.168.100.100
   password: '1'
