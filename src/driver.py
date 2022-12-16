@@ -103,7 +103,7 @@ def create_PLC_state_subscrib():
 	rospy.spin()
 
 def create_quat(rad):
-	return tf.transformations.quaternion_from_euler(0, 0, rad * math.pi / 180.0)
+	return tf.transformations.quaternion_from_euler(0, 0, rad)
 
 def create_odom_msg(pos_x, pos_y, quat, vel_x, vel_y, vel_w, now):
 	odom = Odometry()
@@ -151,7 +151,7 @@ def create_tf_odom_publisher():
 			dx_mm = diff_right * math.cos(pos_w)
 			dy_mm = diff_right * math.sin(pos_w)
 			dw_rad = 0
-		if diff_right + diff_left == 0:
+		elif diff_right + diff_left == 0:
 			dx_mm = 0
 			dy_mm = 0
 			dw_rad = 2.0 * diff_right / L_mm
@@ -256,7 +256,7 @@ if __name__ == '__main__':
 	threads = []
 
 	set_param()
-	# connectToPLC()
+	connectToPLC()
 
 	isTest = rospy.get_param("~isTest")
 	threads.append(threading.Thread(target=create_cmd_vel_subscrib))
