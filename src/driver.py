@@ -102,8 +102,8 @@ def create_PLC_state_subscrib():
 	rospy.Subscriber("plc_state", PLCState, print_PLC_state)
 	rospy.spin()
 
-def create_quat(degree):
-	return tf.transformations.quaternion_from_euler(0, 0, degree)
+def create_quat(rad):
+	return tf.transformations.quaternion_from_euler(0, 0, rad * math.pi / 180.0)
 
 def create_odom_msg(pos_x, pos_y, quat, vel_x, vel_y, vel_w, now):
 	odom = Odometry()
@@ -133,31 +133,55 @@ def create_tf_odom_publisher():
 	pos_w = 0
 
 	rate = rospy.Rate(rospy.get_param("~fps"))
-	last_time = rospy.Time.now()
+	last_plc = get_PLC_state()
 
 	while not rospy.is_shutdown():
 		now = rospy.Time.now()
 
-		current = get_PLC_state()
-		
-		delta_t = (now - last_time).to_sec()
-		last_time = now
+		current_plc = get_PLC_state()
 
-		vel_x = (current.left.velocity + current.right.velocity) * math.cos(pos_w) / 2000.0
-		vel_y = (current.left.velocity + current.right.velocity) * math.sin(pos_w) / 2000.0
-		vel_w = 1.0 / L_mm * (current.right.velocity - current.left.velocity)
+		vel_x = (current_plc.left.velocity + current_plc.right.velocity) * math.cos(pos_w) / 2000.0
+		vel_y = (current_plc.left.velocity + current_plc.right.velocity) * math.sin(pos_w) / 2000.0
+		vel_w = 1.0 / L_mm * (current_plc.right.velocity - current_plc.left.velocity)
 
-		pos_x += vel_x * delta_t
-		pos_y += vel_y * delta_t
-		pos_w += vel_w * delta_t
+		diff_right = current_plc.right.pos - last_plc.right.pos
+		diff_left = current_plc.left.pos - last_plc.left.pos
+
+		if diff_right == diff_left:
+			dx_mm = diff_right * math.cos(pos_w)
+			dy_mm = diff_right * math.sin(pos_w)
+			dw_rad = 0
+		if diff_right + diff_left == 0:
+			dx_mm = 0
+			dy_mm = 0
+			dw_rad = 2.0 * diff_right / L_mm
+		else:
+			temp = L_mm / 2.0 * abs((diff_left + diff_right) / (diff_left - diff_right))
+			theta = (diff_right - diff_left) / float(L_mm)
+			dw_rad = theta
+			if abs(diff_left) < abs(diff_right): #ture left
+				theta *= -1
+				dx_ = temp * math.sin(theta)
+				dy_ = temp * (1 - math.cos(theta))
+			else: #Turn right
+				dx_ = temp * math.sin(theta)
+				dy_ = temp * (math.cos(theta) - 1)
+			
+			dx_mm = dx_ * math.cos(pos_w) - dy_ * math.sin(pos_w)
+			dy_mm = dx_ * math.sin(pos_w) + dy_ * math.cos(pos_w)
+
+		pos_x += dx_mm / 1000
+		pos_y += dy_mm / 1000
+		pos_w += dw_rad
 		pos_w = pos_w % (math.pi * 2)
 
 		quat = create_quat(pos_w)
 		tf_broadcaster.sendTransform((pos_x, pos_y, 0), quat, now, "base_link", "odom")
-
 		odom_msg = create_odom_msg(pos_x, pos_y, quat, vel_x, vel_y, vel_w, now)
 
-		plc_pub.publish(current)
+		last_plc = current_plc
+
+		plc_pub.publish(current_plc)
 		odom_pub.publish(odom_msg)
 		rate.sleep()
 
