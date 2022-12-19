@@ -157,13 +157,13 @@ def create_tf_odom_publisher():
 			dw_rad = 2.0 * diff_right / L_mm
 		else:
 			temp = L_mm / 2.0 * abs((diff_left + diff_right) / (diff_left - diff_right))
-			theta = (diff_right - diff_left) / float(L_mm)
+			theta = (diff_right - diff_left) / float(L_mm) #ture left is positive.Otherwise, negative
 			dw_rad = theta
 			if abs(diff_left) < abs(diff_right): #ture left
-				theta *= -1
 				dx_ = temp * math.sin(theta)
 				dy_ = temp * (1 - math.cos(theta))
 			else: #Turn right
+				theta *= -1
 				dx_ = temp * math.sin(theta)
 				dy_ = temp * (math.cos(theta) - 1)
 			
