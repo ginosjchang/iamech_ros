@@ -50,7 +50,7 @@ find_package(catkin REQUIRED COMPONENTS
 #3 Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  PLCState.msg
+  PLCStatus.msg
   Wheel.msg
 )
 
@@ -58,6 +58,7 @@ add_message_files(
 add_service_files(
   FILES
   AGV_Server.srv
+  Position.srv
 )
 
 ## Generate actions in the 'action' folder
