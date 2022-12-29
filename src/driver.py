@@ -66,12 +66,11 @@ def odom_thread():
 
 		position = odometry.pos_update(diff_right, diff_left, L_mm)
 
-		quat = odometry.create_quat(position[2])
-		tf_broadcaster.sendTransform((position[0], position[1], 0), quat, now, "base_link", "odom")
-
 		vel_x = (current_plc.left.velocity + current_plc.right.velocity) * math.cos(position[2]) / 2000.0
 		vel_y = (current_plc.left.velocity + current_plc.right.velocity) * math.sin(position[2]) / 2000.0
 		vel_w = 1.0 / L_mm * (current_plc.right.velocity - current_plc.left.velocity)
+		quat = odometry.create_quat(position[2])
+		tf_broadcaster.sendTransform((position[0], position[1], 0), quat, now, "base_link", "odom")
 		odom_msg = odometry.create_odom_msg(position[0], position[1], quat, vel_x, vel_y, vel_w, now)
 
 		last_plc = current_plc
@@ -79,6 +78,8 @@ def odom_thread():
 		plc_pub.publish(current_plc)
 		odom_pub.publish(odom_msg)
 		rate.sleep()
+
+### ------Service------
 
 def set_serveOn(req):
 	result = AGV_ServerResponse()
