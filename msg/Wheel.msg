@@ -1,4 +1,5 @@
 int32 bReady
+int32 bMoving
 int32 bError
 int32 pos
 int32 velocity
