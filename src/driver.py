@@ -18,7 +18,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
 #User defined
-from iamech_ros.srv import AGV_Server, AGV_ServerResponse
+from iamech_ros.srv import ServeON, ServeONResponse
 from iamech_ros.msg import PLCStatus
 
 ### ------Velocity------
@@ -82,12 +82,12 @@ def odom_thread():
 ### ------Service------
 
 def set_serveOn(req):
-	result = AGV_ServerResponse()
+	result = ServeONResponse()
 	result.b = connect.set_parameter(".bSLAM_ServeON", req.a)
 	return result
 
 def create_service():
-	service = rospy.Service('~set_ServeON', AGV_Server, set_serveOn)
+	service = rospy.Service('~set_ServeON', ServeON, set_serveOn)
 	odometry.service_on()
 	rospy.spin()
 
@@ -102,8 +102,8 @@ if __name__ == '__main__':
 	threads = []
 
 	yamlreader.yaml_read()
-	connect.connectToPLC()
-	# connect.connectVirtual()
+	# connect.connectToPLC()
+	connect.connectVirtual()
 
 	threads.append(threading.Thread(target=create_cmd_vel_subscrib))
 	threads.append(threading.Thread(target=odom_thread))

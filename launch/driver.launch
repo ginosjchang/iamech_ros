@@ -1,6 +1,6 @@
 <launch>
 <arg name="isTest" default="False"/>
-<arg name="yaml_path" default="$(find iamech_ros)/config/AGV_config.yaml"/>
+<arg name="yaml_path" default="$(find iamech_ros)/config/car_config.yaml"/>
 
 <node name="iAmech_driver" pkg="iamech_ros" type="driver.py" output="screen" args="">
     <param name="isTest" value="$(arg isTest)"/>

@@ -7,7 +7,7 @@ from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 import math
 from threading import Lock
 
-from iamech_ros.srv import Position, PositionResponse
+from iamech_ros.srv import OdomPos, OdomPosResponse
 
 position = [0.0, 0.0, 0.0] # x, y, w
 odom_mutex = Lock()
@@ -82,15 +82,15 @@ def get_position():
 
 def get_position_service(req):
     p = get_position()
-    res = PositionResponse(p[0], p[1], p[2])
+    res = OdomPosResponse(p[0], p[1], p[2])
     return res
 
 def set_position_service(req):
     set_position(req.x, req.y, req.w)
     p = get_position()
-    res = PositionResponse(p[0], p[1], p[2])
+    res = OdomPosResponse(p[0], p[1], p[2])
     return res
     
 def service_on():
-    rospy.Service('~get_position', Position, get_position_service)
-    rospy.Service('~set_position', Position, set_position_service)
+    rospy.Service('~get_position', OdomPos, get_position_service)
+    rospy.Service('~set_position', OdomPos, set_position_service)

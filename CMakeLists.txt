@@ -57,8 +57,8 @@ add_message_files(
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  AGV_Server.srv
-  Position.srv
+  ServeON.srv
+  OdomPos.srv
 )
 
 ## Generate actions in the 'action' folder
