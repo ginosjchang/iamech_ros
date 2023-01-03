@@ -12,8 +12,13 @@ roslaunch iamech_ros driver.launch
 ### Publish topic
 + /tf
 + /odom
++ /plc_status
 ### Subscrib topic
 + /cmd_vel
+### Service
++ /iAmech/set_ServeON
++ /iAmech/get_position
++ /iAmech/set_position
 ### Parameters
 + yaml_path: The path of .yaml file which is the config of AVG and PLC in script/.
 ### Yaml Parameters
