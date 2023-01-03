@@ -10,15 +10,17 @@
 roslaunch iamech_ros driver.launch
 ```
 ### Publish topic
-+ /tf
-+ /odom
-+ /plc_status
++ /odom(nav_msgs/Odometry)
++ /plc_status(iamech_ros/PLCStatus)
 ### Subscrib topic
-+ /cmd_vel
++ /cmd_vel(geometry_msgs/Twist)
 ### Service
-+ /iAmech/set_ServeON
-+ /iAmech/get_position
-+ /iAmech/set_position
++ ~set_ServeON(iamech_ros/ServeON)  
+  set the serveON is 1 or 0.
++ ~get_position(iamech_ros/OdomPos)  
+  get the current odometry position.
++ ~set_position(iamech_ros/OdomPos)  
+  set the current odometry position.
 ### Parameters
 + yaml_path: The path of .yaml file which is the config of AVG and PLC in script/.
 ### Yaml Parameters
