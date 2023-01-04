@@ -7,7 +7,7 @@ from iamech_ros.msg import PLCStatus
 plc = None
 plc_mutex = Lock()
 plc_data_tpye = {
-	".bSLAM_ServeON": pyads.PLCTYPE_DINT,
+	".bSLAM_ServeON": pyads.PLCTYPE_BOOL,
 	".SLAM_R[2]": pyads.PLCTYPE_DINT,
 	".SLAM_R[11]": pyads.PLCTYPE_DINT,
 	".SLAM_R[12]": pyads.PLCTYPE_DINT,
@@ -153,7 +153,7 @@ def get_status():
 		plc_mutex.release()
 		return None
 	status = PLCStatus()
-	status.ServeON = plc.read_by_name(".bSLAM_ServeON", pyads.PLCTYPE_DINT)
+	status.ServeON = plc.read_by_name(".bSLAM_ServeON", pyads.PLCTYPE_BOOL)
 	status.right.bReady = plc.read_by_name(".SLAM_R[11]", pyads.PLCTYPE_DINT)
 	status.right.bMoving = plc.read_by_name(".SLAM_R[12]", pyads.PLCTYPE_DINT)
 	status.right.bError = plc.read_by_name(".SLAM_R[13]", pyads.PLCTYPE_DINT)

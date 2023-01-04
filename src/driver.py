@@ -102,8 +102,8 @@ if __name__ == '__main__':
 	threads = []
 
 	yamlreader.yaml_read()
-	# connect.connectToPLC()
-	connect.connectVirtual()
+	connect.connectToPLC()
+	# connect.connectVirtual()
 
 	threads.append(threading.Thread(target=create_cmd_vel_subscrib))
 	threads.append(threading.Thread(target=odom_thread))
