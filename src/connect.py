@@ -113,7 +113,7 @@ def close():
 	if not plc:
 		plc_mutex.release()
 		return
-	plc.write_by_name(".bSLAM_ServerON", 0, pyads.PLCTYPE_DINT)
+	plc.write_by_name(".bSLAM_ServerON", 0, pyads.PLCTYPE_BOOL)
 	plc.close()
 	plc_mutex.release()
 
